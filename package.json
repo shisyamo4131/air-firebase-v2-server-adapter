@@ -1,0 +1,18 @@
+{
+  "name": "air-firebase-v2-server-adapter",
+  "version": "1.0.0",
+  "description": "An adapter for Firebase Cloud Functions.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "shisyamo4131",
+  "license": "ISC",
+  "peerDependencies": {
+    "firebase-functions": "^6.0.1"
+  },
+  "devDependencies": {
+    "firebase-functions": "^6.0.1"
+  }
+}
