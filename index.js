@@ -11,6 +11,10 @@ class ServerAdapter {
     ServerAdapter.firestore = firestore;
   }
 
+  get type() {
+    return "SERVER";
+  }
+
   /**
    * console を返します。
    * FireModel でコンソールを出力するために使用します。
