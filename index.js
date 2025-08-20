@@ -23,7 +23,7 @@ class ServerAdapter {
     return logger;
   }
 
-  async setAutonumber({ transaction, prefix = null }) {
+  async setAutonumber({ transaction, prefix = null } = {}) {
     if (!transaction) {
       throw new Error("transaction is required.");
     }
@@ -98,7 +98,7 @@ class ServerAdapter {
     transaction = null,
     callBack = null,
     prefix = null,
-  }) {
+  } = {}) {
     if (callBack !== null && typeof callBack !== "function") {
       throw new Error(`callBack must be a function.`);
     }
@@ -142,7 +142,7 @@ class ServerAdapter {
     }
   }
 
-  async fetch({ docId, transaction = null, prefix = null }) {
+  async fetch({ docId, transaction = null, prefix = null } = {}) {
     if (!docId) throw new Error("docId is required.");
 
     try {
@@ -165,7 +165,7 @@ class ServerAdapter {
     }
   }
 
-  async fetchDoc({ docId, transaction = null, prefix = null }) {
+  async fetchDoc({ docId, transaction = null, prefix = null } = {}) {
     if (!docId) throw new Error("docId is required.");
 
     try {
@@ -290,7 +290,7 @@ class ServerAdapter {
     options = [],
     transaction = null,
     prefix = null,
-  }) {
+  } = {}) {
     const queryConstraints = [];
 
     if (!Array.isArray(constraints)) {
@@ -509,7 +509,7 @@ class ServerAdapter {
     }
   }
 
-  async restore({ docId, prefix = null }) {
+  async restore({ docId, prefix = null } = {}) {
     if (!docId) throw new Error("docId is required.");
 
     try {
