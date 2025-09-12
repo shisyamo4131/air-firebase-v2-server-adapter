@@ -129,45 +129,33 @@ class ServerAdapter {
   }
 
   /**
-   * Creates a document in Firestore with the current instance data.
-   * - Executed within a transaction. If not provided, one will be created internally.
-   * - If `docId` is not provided, Firestore auto-generates one.
-   * - If `useAutonumber` is `true` and the model supports it, auto-numbering will run.
-   * - If `callBack` is provided, it will be executed after the document is created.
-   * - If `prefix` is provided, it will be used to resolve the collection path.
-   *
-   * Firestore に現在のインスタンスデータでドキュメントを作成します。
-   * - 処理はトランザクション内で実行され、指定がない場合は内部で生成されます。
-   * - `docId` が指定されていなければ Firestore により自動生成されます。
-   * - モデルが自動採番に対応しており、`useAutonumber` が `true` の場合は採番処理が行われます。
-   * - `callBack` が指定されていれば、作成後に実行されます。
-   * - `prefix` が指定されていれば、コレクションパスの解決に使用されます。
-   *
-   * @param {Object} args - Parameters for document creation.
-   * @param {string|null} [args.docId] - Optional document ID.
+   * Create a new document in Firestore.
+   * @param {Object} args - Creation options.
+   * @param {string} [args.docId] - Document ID to use (optional).
    * @param {boolean} [args.useAutonumber=true] - Whether to use auto-numbering.
-   * @param {Object|null} [args.transaction] - Firestore transaction object.
-   * @param {function|null} [args.callBack] - Optional callback after creation.
-   * @param {string|null} [args.prefix] - Optional Firestore path prefix.
+   * @param {Object} [args.transaction] - Firestore transaction.
+   * @param {Function} [args.callBack] - Callback function.
+   * @param {string} [args.prefix] - Path prefix.
    * @returns {Promise<DocumentReference>} Reference to the created document.
-   * @throws {Error} If callback is invalid or Firestore operation fails.
+   * @throws {Error} If creation fails or `callBack` is not a function.
    */
-  async create({
-    docId = null,
-    useAutonumber = true,
-    transaction = null,
-    callBack = null,
-    prefix = null,
-  } = {}) {
+  async create(args = {}) {
+    const { docId, useAutonumber = true, transaction, callBack, prefix } = args;
+
     try {
+      // `callBack` must be a function if provided.
       if (callBack !== null && typeof callBack !== "function") {
-        throw new Error(`callBack must be a function.`);
-      }
-      if (!prefix) {
         throw new Error(
-          "The prefix is required for create(). Please specify the prefix."
+          `[ServerAdapter.js - create] callBack must be a function.`
         );
       }
+
+      // `prefix` is required for ServerAdapter
+      if (!prefix) {
+        throw new Error("[ServerAdapter.js - create] The prefix is required.");
+      }
+
+      // Pre-create hooks and validation
       await this.beforeCreate();
       await this.beforeEdit();
       this.validate();
@@ -227,24 +215,41 @@ class ServerAdapter {
     }
   }
 
-  async fetch({ docId, transaction = null, prefix = null } = {}) {
+  /**
+   * Get a document from Firestore by its ID and load into this instance.
+   * - The class properties will be cleared if the document does not exist.
+   * @param {Object} args - Fetch options.
+   * @param {string} args.docId - Document ID to fetch.
+   * @param {Object|null} [args.transaction=null] - Firestore transaction (optional).
+   * @param {string|null} [args.prefix=null] - Path prefix (optional).
+   * @returns {Promise<boolean>} True if document was found and loaded, false if not found.
+   * @throws {Error} If `docId` is not specified or fetch fails.
+   */
+  async fetch(args = {}) {
+    const { docId, transaction = null, prefix = null } = args;
     try {
-      if (!docId) throw new Error("docId is required.");
-      if (!prefix) {
-        throw new Error(
-          "The prefix is required for fetch(). Please specify the prefix."
-        );
+      if (!docId) {
+        throw new Error("[ServerAdapter.js - fetch] docId is required.");
       }
+      if (!prefix) {
+        throw new Error("[ServerAdapter.js - fetch] prefix is required.");
+      }
+
+      // Get collection path defined by FireModel.
       const collectionPath = this.constructor.getCollectionPath(prefix);
+
+      // Prepare document reference.
       const colRef = ServerAdapter.firestore
         .collection(collectionPath)
         .withConverter(this.constructor.converter());
       const docRef = colRef.doc(docId);
 
+      // Fetch document snapshot.
       const docSnap = transaction
         ? await transaction.get(docRef)
         : await docRef.get();
 
+      // Load data into this instance, or reset if not found.
       this.initialize(docSnap.exists ? docSnap.data() : null);
 
       return docSnap.exists;
@@ -254,27 +259,49 @@ class ServerAdapter {
     }
   }
 
-  async fetchDoc({ docId, transaction = null, prefix = null } = {}) {
+  /**
+   * Get a document from Firestore by its ID and return as a new instance.
+   * @param {Object} args - Fetch options.
+   * @param {string} args.docId - Document ID to fetch.
+   * @param {Object|null} [args.transaction=null] - Firestore transaction (optional).
+   * @param {string|null} [args.prefix=null] - Path prefix (optional).
+   * @returns {Promise<Object|null>} Document data, or null if not found.
+   * @throws {Error} If `docId` is not specified or fetch fails.
+   */
+  async fetchDoc(args = {}) {
     try {
-      if (!docId) throw new Error("docId is required.");
-      if (!prefix) {
-        throw new Error(
-          "The prefix is required for fetchDoc(). Please specify the prefix."
-        );
+      const { docId, transaction = null, prefix = null } = args;
+
+      // Throw error if docId is not provided.
+      if (!docId) {
+        throw new Error("[ServerAdapter.js - fetchDoc] 'docId' is required.");
       }
+
+      // Throw error if prefix is not provided. (ServerAdapter only)
+      if (!prefix) {
+        throw new Error("[ServerAdapter.js - fetchDoc] prefix is required.");
+      }
+
+      // Get collection path defined by FireModel.
       const collectionPath = this.constructor.getCollectionPath(prefix);
+
+      // Prepare document reference.
       const colRef = ServerAdapter.firestore
         .collection(collectionPath)
         .withConverter(this.constructor.converter());
       const docRef = colRef.doc(docId);
 
+      // Fetch document snapshot.
       const docSnap = transaction
         ? await transaction.get(docRef)
         : await docRef.get();
 
       return docSnap.exists ? docSnap.data() : null;
     } catch (err) {
-      console.error(`[ServerAdapter.js - fetchDoc]`, err);
+      console.error(
+        "[ServerAdapter.js - fetchDoc] An error has occurred:",
+        err
+      );
       throw err;
     }
   }
