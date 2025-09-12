@@ -90,11 +90,6 @@ class ServerAdapter {
       );
     }
 
-    if (!prefix) {
-      throw new Error(
-        "[ServerAdapter - getCounterUpdater] prefix is required."
-      );
-    }
     // Get collection path defined by class.
     // -> `getCollectionPath()` is a static method defined in FireModel.
     // ex) `customers` or `companies/{companyId}/customers`
@@ -104,24 +99,19 @@ class ServerAdapter {
     // ex) `["companies", "{companyId}", "customers"]`
     const segments = collectionPath.split("/");
 
+    // Get collection name (Last segment is collection name)
+    const colName = segments.pop();
+
     // Determine effective collection path for counter-document.
-    let effectiveDocPath = "";
-    if (segments.length === 1) {
-      // ex) `customers` -> `meta/customers`
-      effectiveDocPath = `meta/${segments[0]}`;
-    } else {
-      // ex) `["companies", "{companyId}", "customers"]` -> `companies/{companyId}/meta/customers`
-      const col = segments.pop(); // Remove last segment (current collection name)
-      effectiveDocPath = `${segments.join("/")}/meta/${col}`;
-    }
+    const effectiveDocPath = `${segments.join("/")}/meta/docCounter`;
     const docRef = ServerAdapter.firestore.doc(effectiveDocPath);
     const docSnap = await transaction.get(docRef);
     if (!docSnap.exists) {
-      return () => transaction.set(docRef, { docCount: increment ? 1 : 0 });
+      return () => transaction.set(docRef, { [colName]: increment ? 1 : 0 });
     } else {
       return () =>
         transaction.update(docRef, {
-          docCount: ServerAdapter.firestore.FieldValue.increment(
+          [colName]: ServerAdapter.firestore.FieldValue.increment(
             increment ? 1 : -1
           ),
         });
@@ -144,15 +134,10 @@ class ServerAdapter {
 
     try {
       // `callBack` must be a function if provided.
-      if (callBack !== null && typeof callBack !== "function") {
+      if (callBack && typeof callBack !== "function") {
         throw new Error(
           `[ServerAdapter.js - create] callBack must be a function.`
         );
-      }
-
-      // `prefix` is required for ServerAdapter
-      if (!prefix) {
-        throw new Error("[ServerAdapter.js - create] The prefix is required.");
       }
 
       // Pre-create hooks and validation
@@ -231,9 +216,6 @@ class ServerAdapter {
       if (!docId) {
         throw new Error("[ServerAdapter.js - fetch] docId is required.");
       }
-      if (!prefix) {
-        throw new Error("[ServerAdapter.js - fetch] prefix is required.");
-      }
 
       // Get collection path defined by FireModel.
       const collectionPath = this.constructor.getCollectionPath(prefix);
@@ -275,11 +257,6 @@ class ServerAdapter {
       // Throw error if docId is not provided.
       if (!docId) {
         throw new Error("[ServerAdapter.js - fetchDoc] 'docId' is required.");
-      }
-
-      // Throw error if prefix is not provided. (ServerAdapter only)
-      if (!prefix) {
-        throw new Error("[ServerAdapter.js - fetchDoc] prefix is required.");
       }
 
       // Get collection path defined by FireModel.
@@ -420,12 +397,6 @@ class ServerAdapter {
         throw new Error(`options must be an array.`);
       }
 
-      if (!prefix) {
-        throw new Error(
-          `The prefix is required for fetchDocs(). Please specify the prefix.`
-        );
-      }
-
       const collectionPath = this.constructor.getCollectionPath(prefix);
       const colRef = ServerAdapter.firestore
         .collection(collectionPath)
@@ -492,12 +463,6 @@ class ServerAdapter {
         );
       }
 
-      if (!prefix) {
-        throw new Error(
-          `The prefix is required for update(). Please specify the prefix.`
-        );
-      }
-
       await this.beforeUpdate();
       await this.beforeEdit();
       this.validate();
@@ -532,12 +497,6 @@ class ServerAdapter {
     try {
       if (!this.docId) {
         throw new Error(`The docId property is required. Call fetch() first.`);
-      }
-
-      if (!prefix) {
-        throw new Error(
-          `The prefix is required for hasChild(). Please specify the prefix.`
-        );
       }
 
       for (const item of this.constructor.hasMany) {
@@ -598,12 +557,6 @@ class ServerAdapter {
       if (!this.docId) {
         throw new Error(
           `The docId property is required for delete(). Call fetch() first.`
-        );
-      }
-
-      if (!prefix) {
-        throw new Error(
-          `The prefix is required for delete(). Please specify the prefix.`
         );
       }
       await this.beforeDelete();
@@ -671,7 +624,6 @@ class ServerAdapter {
   async restore({ docId, prefix = null, transaction = null } = {}) {
     try {
       if (!docId) throw new Error("docId is required.");
-      if (!prefix) throw new Error("prefix is required for restore.");
 
       const performTransaction = async (txn) => {
         const collectionPath = this.constructor.getCollectionPath(prefix);
