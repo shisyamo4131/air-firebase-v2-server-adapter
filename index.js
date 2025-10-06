@@ -493,6 +493,24 @@ class ServerAdapter {
     }
   }
 
+  /**
+   * Checks if any child documents exist for this document, based on `hasMany` configuration.
+   * - For collections, the prefix is applied to the collection path.
+   *
+   * [NOTE]
+   * - 2025/10/06 現在、transaction.get() に Query を指定することはできない仕様。
+   *   そのため、依存ドキュメントの存在確認には getDocs() を使用することになるが、
+   *   transaction 内での読み取りにならず、当該処理の直後に他のプロセスから依存ドキュメントが
+   *   追加された場合に整合性を失う可能性あり。
+   *   引数 transaction が本来であれば不要だが、将来的に transaction.get() が
+   *   Query に対応した場合に備えて引数として受け取る形にしておく。
+   *
+   * @param {Object} args - Options for the check.
+   * @param {Object|null} [args.transaction=null] - Firestore transaction object (optional).
+   * @param {string|null} [args.prefix=null] - Optional path prefix for resolving collections.
+   * @returns {Promise<object|boolean>} Matching `hasMany` item if found, otherwise false.
+   * @throws {Error} If `docId` is not set or query fails.
+   */
   async hasChild({ transaction = null, prefix = null } = {}) {
     try {
       if (!this.docId) {
@@ -514,17 +532,21 @@ class ServerAdapter {
           .where(item.field, item.condition, this.docId)
           .limit(1);
 
-        const snapshot = transaction
-          ? await transaction.get(queryRef)
-          : await queryRef.get();
+        /** transaction.get() が Query に対応した場合は以下をコメントアウト */
+        const snapshot = await queryRef.get();
+
+        /** transaction.get() が Query に対応した場合は以下を使用 */
+        // const snapshot = transaction
+        //   ? await transaction.get(queryRef)
+        //   : await queryRef.get();
 
         if (!snapshot.empty) return item;
       }
 
       return false;
-    } catch (err) {
-      console.error(`[ServerAdapter.js - hasChild]`, err);
-      throw err;
+    } catch (error) {
+      console.error(`[ServerAdapter.js - hasChild] ${error.message}`, error);
+      throw error;
     }
   }
 
