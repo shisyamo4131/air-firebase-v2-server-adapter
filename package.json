@@ -1,16 +1,37 @@
 {
-  "name": "air-firebase-v2-server-adapter",
+  "name": "@shisyamo4131/air-firebase-v2-server-adapter",
   "version": "1.0.0",
-  "description": "An adapter for Firebase Cloud Functions.",
-  "main": "index.js",
+  "description": "Server adapter for FireModel (Firebase Cloud Functions)",
   "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "keywords": [
+    "firebase",
+    "firestore",
+    "server",
+    "adapter",
+    "cloud-functions"
+  ],
+  "author": "shisyamo4131",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shisyamo4131/air-firebase-v2-server-adapter.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "shisyamo4131",
-  "license": "ISC",
   "peerDependencies": {
-    "firebase-functions": "^6.0.1"
+    "firebase-functions": "^5.0.0 || ^6.0.0"
   },
   "devDependencies": {
     "firebase-functions": "^6.0.1"
