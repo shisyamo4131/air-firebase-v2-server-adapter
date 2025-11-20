@@ -72,51 +72,51 @@ class ServerAdapter {
     }
   }
 
-  /**
-   * Returns a function to update the counter document in Firestore.
-   * - This function treats 'this' as a FireModel instance.
-   * @param {Object} args - Parameters for counter update.
-   * @param {Object} args.transaction - Firestore transaction object (required).
-   * @param {boolean} [args.increment=true] - Whether to increment (true) or decrement (false) the counter.
-   * @param {string|null} [args.prefix=null] - Optional path prefix for collection.
-   * @returns {Promise<Function>} Function to update the counter document.
-   */
-  async getCounterUpdater(args = {}) {
-    const { transaction, increment = true, prefix = null } = args;
-    // transaction is required
-    if (!transaction) {
-      throw new Error(
-        "[ServerAdapter - getCounterUpdater] transaction is required."
-      );
-    }
+  // /**
+  //  * Returns a function to update the counter document in Firestore.
+  //  * - This function treats 'this' as a FireModel instance.
+  //  * @param {Object} args - Parameters for counter update.
+  //  * @param {Object} args.transaction - Firestore transaction object (required).
+  //  * @param {boolean} [args.increment=true] - Whether to increment (true) or decrement (false) the counter.
+  //  * @param {string|null} [args.prefix=null] - Optional path prefix for collection.
+  //  * @returns {Promise<Function>} Function to update the counter document.
+  //  */
+  // async getCounterUpdater(args = {}) {
+  //   const { transaction, increment = true, prefix = null } = args;
+  //   // transaction is required
+  //   if (!transaction) {
+  //     throw new Error(
+  //       "[ServerAdapter - getCounterUpdater] transaction is required."
+  //     );
+  //   }
 
-    // Get collection path defined by class.
-    // -> `getCollectionPath()` is a static method defined in FireModel.
-    // ex) `customers` or `companies/{companyId}/customers`
-    const collectionPath = this.constructor.getCollectionPath(prefix);
+  //   // Get collection path defined by class.
+  //   // -> `getCollectionPath()` is a static method defined in FireModel.
+  //   // ex) `customers` or `companies/{companyId}/customers`
+  //   const collectionPath = this.constructor.getCollectionPath(prefix);
 
-    // Divide collection path into segments.
-    // ex) `["companies", "{companyId}", "customers"]`
-    const segments = collectionPath.split("/");
+  //   // Divide collection path into segments.
+  //   // ex) `["companies", "{companyId}", "customers"]`
+  //   const segments = collectionPath.split("/");
 
-    // Get collection name (Last segment is collection name)
-    const colName = segments.pop();
+  //   // Get collection name (Last segment is collection name)
+  //   const colName = segments.pop();
 
-    // Determine effective collection path for counter-document.
-    const effectiveDocPath = `${segments.join("/")}/meta/docCounter`;
-    const docRef = ServerAdapter.firestore.doc(effectiveDocPath);
-    const docSnap = await transaction.get(docRef);
-    if (!docSnap.exists) {
-      return () => transaction.set(docRef, { [colName]: increment ? 1 : 0 });
-    } else {
-      return () =>
-        transaction.update(docRef, {
-          [colName]: ServerAdapter.firestore.FieldValue.increment(
-            increment ? 1 : -1
-          ),
-        });
-    }
-  }
+  //   // Determine effective collection path for counter-document.
+  //   const effectiveDocPath = `${segments.join("/")}/meta/docCounter`;
+  //   const docRef = ServerAdapter.firestore.doc(effectiveDocPath);
+  //   const docSnap = await transaction.get(docRef);
+  //   if (!docSnap.exists) {
+  //     return () => transaction.set(docRef, { [colName]: increment ? 1 : 0 });
+  //   } else {
+  //     return () =>
+  //       transaction.update(docRef, {
+  //         [colName]: ServerAdapter.firestore.FieldValue.increment(
+  //           increment ? 1 : -1
+  //         ),
+  //       });
+  //   }
+  // }
 
   /**
    * Create a new document in Firestore.
@@ -154,12 +154,12 @@ class ServerAdapter {
             : null;
 
         // Get function to update counter document.
-        const adapter = this.constructor.getAdapter();
-        const counterUpdater = await adapter.getCounterUpdater.bind(this)({
-          transaction: txn,
-          increment: true,
-          prefix,
-        });
+        // const adapter = this.constructor.getAdapter();
+        // const counterUpdater = await adapter.getCounterUpdater.bind(this)({
+        //   transaction: txn,
+        //   increment: true,
+        //   prefix,
+        // });
 
         // Prepare document reference
         const collectionPath = this.constructor.getCollectionPath(prefix);
@@ -180,7 +180,7 @@ class ServerAdapter {
         // Update autonumber if applicable
         if (updateAutonumber) await updateAutonumber();
 
-        if (counterUpdater) await counterUpdater();
+        // if (counterUpdater) await counterUpdater();
 
         // Execute callback if provided
         if (callBack) await callBack(txn);
@@ -598,12 +598,12 @@ class ServerAdapter {
         }
 
         // Get function to update counter document.
-        const adapter = this.constructor.getAdapter();
-        const counterUpdater = await adapter.getCounterUpdater.bind(this)({
-          transaction: txn,
-          increment: false,
-          prefix,
-        });
+        // const adapter = this.constructor.getAdapter();
+        // const counterUpdater = await adapter.getCounterUpdater.bind(this)({
+        //   transaction: txn,
+        //   increment: false,
+        //   prefix,
+        // });
 
         // If logicalDelete is enabled, archive the document before deletion
         if (this.constructor.logicalDelete) {
@@ -627,7 +627,7 @@ class ServerAdapter {
 
         txn.delete(docRef);
 
-        if (counterUpdater) await counterUpdater();
+        // if (counterUpdater) await counterUpdater();
 
         if (callBack) await callBack(txn);
       };
@@ -660,19 +660,19 @@ class ServerAdapter {
         }
 
         // Get function to update counter document.
-        const adapter = this.constructor.getAdapter();
-        const counterUpdater = await adapter.getCounterUpdater.bind(this)({
-          transaction: txn,
-          increment: true,
-          prefix,
-        });
+        // const adapter = this.constructor.getAdapter();
+        // const counterUpdater = await adapter.getCounterUpdater.bind(this)({
+        //   transaction: txn,
+        //   increment: true,
+        //   prefix,
+        // });
 
         const colRef = ServerAdapter.firestore.collection(collectionPath);
         const docRef = colRef.doc(docId);
         txn.delete(archiveDocRef);
         txn.set(docRef, docSnapshot.data());
 
-        if (counterUpdater) await counterUpdater();
+        // if (counterUpdater) await counterUpdater();
 
         return docRef;
       };
