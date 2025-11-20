@@ -28,7 +28,10 @@
     "access": "public"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:publish": "npm version prerelease --preid=dev && npm publish --tag dev",
+    "release:patch": "npm version patch && npm publish",
+    "release:minor": "npm version minor && npm publish",
+    "release:major": "npm version major && npm publish"
   },
   "peerDependencies": {
     "firebase-functions": "^5.0.0 || ^6.0.0"
