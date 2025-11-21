@@ -708,6 +708,15 @@ class ServerAdapter {
   subscribeDocs() {
     throw new Error(`Can not use subscribeDocs at server side.`);
   }
+
+  /**
+   * Firestore トランザクションを実行します。
+   * @param {Function} updateFunction - トランザクション内で実行する関数
+   * @returns {Promise<any>} トランザクションの結果
+   */
+  async runTransaction(updateFunction) {
+    return await this.constructor.firestore.runTransaction(updateFunction);
+  }
 }
 
 export default ServerAdapter;
