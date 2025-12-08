@@ -141,8 +141,8 @@ class ServerAdapter {
       }
 
       // Pre-create hooks and validation
-      await this.beforeCreate();
-      await this.beforeEdit();
+      await this.beforeCreate(args);
+      await this.beforeEdit(args);
       this.validate();
 
       // transaction processing
@@ -463,8 +463,8 @@ class ServerAdapter {
         );
       }
 
-      await this.beforeUpdate();
-      await this.beforeEdit();
+      await this.beforeUpdate(args);
+      await this.beforeEdit(args);
       this.validate();
 
       const performTransaction = async (txn) => {
@@ -581,7 +581,7 @@ class ServerAdapter {
           `The docId property is required for delete(). Call fetch() first.`
         );
       }
-      await this.beforeDelete();
+      await this.beforeDelete(args);
 
       const collectionPath = this.constructor.getCollectionPath(prefix);
       const colRef = ServerAdapter.firestore.collection(collectionPath);
