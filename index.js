@@ -451,7 +451,8 @@ class ServerAdapter {
    * @returns {Promise<DocumentReference>} Reference to the updated document.
    * @throws {Error} If `docId` is not set or update fails.
    */
-  async update({ transaction = null, callBack = null, prefix = null } = {}) {
+  async update(args = {}) {
+    const { transaction = null, callBack = null, prefix = null } = args;
     try {
       if (callBack !== null && typeof callBack !== "function") {
         throw new Error(`callBack must be a function.`);
@@ -570,7 +571,8 @@ class ServerAdapter {
    * @returns {Promise<void>} Resolves when deletion is complete.
    * @throws {Error} If `docId` is missing, or the document can't be deleted.
    */
-  async delete({ transaction = null, callBack = null, prefix = null } = {}) {
+  async delete(args = {}) {
+    const { transaction = null, callBack = null, prefix = null } = args;
     try {
       if (callBack !== null && typeof callBack !== "function") {
         throw new Error(`callBack must be a function.`);
