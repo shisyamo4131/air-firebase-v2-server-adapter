@@ -1,6 +1,6 @@
 {
   "name": "@shisyamo4131/air-firebase-v2-server-adapter",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "Server adapter for FireModel (Firebase Cloud Functions)",
   "type": "module",
   "main": "index.js",
