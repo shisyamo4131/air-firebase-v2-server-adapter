@@ -3,12 +3,17 @@
  * FireModel に Firestore に対する CRUD 機能を注入します。
  */
 import { logger } from "firebase-functions";
+import { GeoPoint } from "firebase-admin/firestore";
 
 class ServerAdapter {
   static firestore = null;
+  static functions = null;
+  static GeoPoint = null;
 
-  constructor(firestore) {
+  constructor(firestore, functions = null) {
     ServerAdapter.firestore = firestore;
+    ServerAdapter.functions = functions; // 2025-12-29 added
+    ServerAdapter.GeoPoint = GeoPoint; // 2025-12-29 added
   }
 
   get type() {
@@ -21,6 +26,34 @@ class ServerAdapter {
    */
   get logger() {
     return logger;
+  }
+
+  /**
+   * Returns the Firestore instance.
+   */
+  get firestore() {
+    if (!ServerAdapter.firestore) {
+      throw new Error("Firestore instance not initialized");
+    }
+    return ServerAdapter.firestore;
+  }
+
+  /**
+   * Returns the Functions instance (optional for server-side).
+   * @returns {Object|null} Functions instance or null
+   */
+  get functions() {
+    return ServerAdapter.functions;
+  }
+
+  /**
+   * Returns the GeoPoint class from firebase-admin.
+   */
+  get GeoPoint() {
+    if (!ServerAdapter.GeoPoint) {
+      throw new Error("GeoPoint class not initialized");
+    }
+    return ServerAdapter.GeoPoint;
   }
 
   async setAutonumber({ transaction, prefix = null } = {}) {

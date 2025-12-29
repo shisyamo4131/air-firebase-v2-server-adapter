@@ -31,12 +31,14 @@
     "dev:publish": "npm version prerelease --preid=dev && npm publish --tag dev",
     "release:patch": "npm version patch && npm publish",
     "release:minor": "npm version minor && npm publish",
-    "release:major": "npm version major && npm publish"
+    "release:major": "npm version major && npm publish",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "peerDependencies": {
     "firebase-functions": "^5.0.0 || ^6.0.0 || ^7.0.0"
   },
   "devDependencies": {
-    "firebase-functions": "^7.0.0"
+    "firebase-functions": "^7.0.0",
+    "jest": "^30.2.0"
   }
 }
