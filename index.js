@@ -56,49 +56,104 @@ class ServerAdapter {
     return ServerAdapter.GeoPoint;
   }
 
+  /**
+   * Assigns an autonumber to the instance using a Firestore transaction.
+   * - Retrieves the current autonumber doc from the `Autonumbers` collection.
+   * - If the document does not exist, it creates one using the class configuration.
+   * - Increments the number and sets it on the instance.
+   * - Returns a function to update the `current` value in Firestore.
+   * - `prefix` is resolved using FireModel.getEffectivePrefix().
+   * @param {Object} args - Autonumber options.
+   * @param {Object} args.transaction - Firestore transaction object (required).
+   * @param {string|null} [args.prefix] - Path prefix (optional, uses config if omitted).
+   * @returns {Promise<Function>} Function that updates the current counter.
+   * @throws {Error} If transaction is missing or autonumber is invalid.
+   */
   async setAutonumber({ transaction, prefix = null } = {}) {
     if (!transaction) {
       throw new Error("transaction is required.");
     }
 
-    if (!prefix) {
-      throw new Error("prefix is required.");
-    }
-
     try {
-      const collectionPath = this.constructor.getCollectionPath(prefix);
-      const docRef = ServerAdapter.firestore
-        .collection("Autonumbers")
-        .doc(collectionPath);
+      // ServerAdapter requires explicit prefix (no global config)
+      if (!prefix) {
+        throw new Error(
+          "prefix is required for ServerAdapter. Cloud Functions cannot use global prefix configuration.",
+        );
+      }
 
+      // Use FireModel's getEffectivePrefix to resolve prefix
+      const effectivePrefix = this.constructor.getEffectivePrefix(prefix);
+
+      // Get collection name from class (e.g., "Employees", "Customers")
+      const collectionName = this.constructor.collectionPath;
+
+      // Build autonumber document path
+      // e.g., "Companies/abc123/Autonumbers/Employees"
+      const autonumberPath = `${effectivePrefix}Autonumbers/${collectionName}`;
+      const docRef = ServerAdapter.firestore.doc(autonumberPath);
+
+      // Get autonumber document
       const docSnap = await transaction.get(docRef);
+
+      let data;
+      let newNumber;
+
       if (!docSnap.exists) {
-        throw new Error(
-          `Could not find Autonumber document. collection: ${collectionPath}`
-        );
+        // Document does not exist - create it using class configuration
+        const config = this.constructor.useAutonumber;
+
+        if (!config || typeof config !== "object") {
+          throw new Error(
+            `useAutonumber must be an object with valid configuration for ${collectionName}`,
+          );
+        }
+
+        data = {
+          current: 0,
+          length: config.length || 6,
+          field: config.field || "code",
+          prefix: config.prefix || "", // Code prefix (e.g., "E" for Employees)
+          status: true, // Always enabled on creation
+        };
+
+        newNumber = 1;
+        const codePrefix = data.prefix || "";
+        const newCode =
+          codePrefix + String(newNumber).padStart(data.length, "0");
+        this[data.field] = newCode;
+
+        // Create the document with initial values
+        transaction.set(docRef, { ...data, current: newNumber });
+
+        // Return empty function (already set in transaction)
+        return () => {};
+      } else {
+        // Document exists - use existing configuration
+        data = docSnap.data();
+
+        // Check if autonumber is enabled
+        if (!data?.status) {
+          throw new Error(`Autonumber is disabled for ${collectionName}`);
+        }
+
+        // Calculate new number
+        newNumber = data.current + 1;
+        const length = data.length;
+        const maxValue = Math.pow(10, length) - 1;
+
+        if (newNumber > maxValue) {
+          throw new Error(`Autonumber maximum reached for ${collectionName}`);
+        }
+
+        // Generate new code with prefix and zero-padding
+        const codePrefix = data.prefix || "";
+        const newCode = codePrefix + String(newNumber).padStart(length, "0");
+        this[data.field] = newCode;
+
+        // Return function to update autonumber document
+        return () => transaction.update(docRef, { current: newNumber });
       }
-
-      const data = docSnap.data();
-      if (!data?.status) {
-        throw new Error(
-          `Autonumber is disabled. collection: ${collectionPath}`
-        );
-      }
-
-      const newNumber = data.current + 1;
-      const length = data.length;
-      const maxValue = Math.pow(10, length) - 1;
-
-      if (newNumber > maxValue) {
-        throw new Error(
-          `The maximum value for Autonumber has been reached. collection: ${collectionPath}`
-        );
-      }
-
-      const newCode = String(newNumber).padStart(length, "0");
-      this[data.field] = newCode;
-
-      return () => transaction.update(docRef, { current: newNumber });
     } catch (err) {
       console.error(`[ServerAdapter.js - setAutonumber]`, err);
       throw err;
@@ -169,7 +224,7 @@ class ServerAdapter {
       // `callBack` must be a function if provided.
       if (callBack && typeof callBack !== "function") {
         throw new Error(
-          `[ServerAdapter.js - create] callBack must be a function.`
+          `[ServerAdapter.js - create] callBack must be a function.`,
         );
       }
 
@@ -310,7 +365,7 @@ class ServerAdapter {
     } catch (err) {
       console.error(
         "[ServerAdapter.js - fetchDoc] An error has occurred:",
-        err
+        err,
       );
       throw err;
     }
@@ -341,10 +396,10 @@ class ServerAdapter {
           if (!["asc", "desc"].includes(args[1] || "asc")) {
             console.error(
               "[ServerAdapter.js - createQueries] Invalid orderBy direction:",
-              args[1]
+              args[1],
             );
             throw new Error(
-              `Invalid orderBy direction: ${args[1]}. Use "asc" or "desc".`
+              `Invalid orderBy direction: ${args[1]}. Use "asc" or "desc".`,
             );
           }
           result.push(orderBy(args[0], args[1] || "asc"));
@@ -353,10 +408,10 @@ class ServerAdapter {
           if (typeof args[0] !== "number" || args[0] <= 0) {
             console.error(
               "[ServerAdapter.js - createQueries] Invalid limit value:",
-              args[0]
+              args[0],
             );
             throw new Error(
-              `Invalid limit value: ${args[0]}. Must be a positive number.`
+              `Invalid limit value: ${args[0]}. Must be a positive number.`,
             );
           }
           result.push(limit(args[0]));
@@ -364,12 +419,12 @@ class ServerAdapter {
         default:
           console.error(
             "[ServerAdapter.js - createQueries] Invalid query type:",
-            type
+            type,
           );
           throw new Error(
             `Invalid query type: ${type}. Please use one of: ${validQueryTypes.join(
-              ", "
-            )}`
+              ", ",
+            )}`,
           );
       }
     });
@@ -396,7 +451,7 @@ class ServerAdapter {
     // サロゲートペア文字（絵文字など）を除外
     const target = constraints.replace(
       /[\uD800-\uDBFF]|[\uDC00-\uDFFF]|~|\*|\[|\]|\s+/g,
-      ""
+      "",
     );
 
     // 1 文字・2 文字のトークンを生成
@@ -493,7 +548,7 @@ class ServerAdapter {
 
       if (!this.docId) {
         throw new Error(
-          `The docId property is required for update(). Call fetch() first.`
+          `The docId property is required for update(). Call fetch() first.`,
         );
       }
 
@@ -613,7 +668,7 @@ class ServerAdapter {
 
       if (!this.docId) {
         throw new Error(
-          `The docId property is required for delete(). Call fetch() first.`
+          `The docId property is required for delete(). Call fetch() first.`,
         );
       }
       await this.beforeDelete(args);
@@ -628,7 +683,7 @@ class ServerAdapter {
         const hasChild = await this.hasChild({ transaction: txn, prefix });
         if (hasChild) {
           throw new Error(
-            `Cannot delete because the associated document exists in the ${hasChild.collection} collection.`
+            `Cannot delete because the associated document exists in the ${hasChild.collection} collection.`,
           );
         }
 
@@ -648,13 +703,13 @@ class ServerAdapter {
           const sourceDocSnap = await txn.get(docRef);
           if (!sourceDocSnap.exists) {
             throw new Error(
-              `The document to be deleted did not exist. The document ID is ${this.docId}.`
+              `The document to be deleted did not exist. The document ID is ${this.docId}.`,
             );
           }
 
           const sourceDocData = sourceDocSnap.data();
           const archiveColRef = ServerAdapter.firestore.collection(
-            `${collectionPath}_archive`
+            `${collectionPath}_archive`,
           );
           const archiveDocRef = archiveColRef.doc(this.docId);
           txn.set(archiveDocRef, sourceDocData);
@@ -690,7 +745,7 @@ class ServerAdapter {
         const docSnapshot = await archiveDocRef.get();
         if (!docSnapshot.exists) {
           throw new Error(
-            `Archived document not found at ${archivePath}. docId: ${docId}`
+            `Archived document not found at ${archivePath}. docId: ${docId}`,
           );
         }
 
