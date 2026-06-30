@@ -431,43 +431,40 @@ class ServerAdapter {
     return result;
   }
 
-  /**
+  /*****************************************************************************
    * Firestore の `tokenMap` に基づく N-Gram 検索用のクエリオブジェクトを生成します。
    * - 検索文字列の 1 文字・2 文字ごとのトークンを作成し、Firestore の `tokenMap` を利用した検索クエリを生成します。
    * - 例：`"検索"` → `['検', '索', '検索']`
-   * - サロゲートペア文字（絵文字など）は Firestore の `tokenMap` では検索対象としないため除外します。
+   * - サロゲートペア文字（絵文字など）および Firestore のフィールドパスとして使用できない文字は検索対象外として除外します。
    *
    * @param {string} constraints - 検索に使用する文字列です。
    * @returns {Array<Object>} - Firestore クエリオブジェクトの配列を返します。
    * @throws {Error} - `constraints` が空文字の場合、エラーをスローします。
-   */
+   *
+   * [更新履歴]
+   * 2026-06-30 - 「.」を検索対象外文字列に追加してリファクタリング
+   *****************************************************************************/
   createTokenMapQueries(constraints) {
     if (!constraints || constraints.trim().length === 0) {
-      throw new Error("Search string (constraints) cannot be empty.");
+      throw new ClientAdapterError(ERRORS.VALIDATION_INVALID_CONSTRAINTS);
     }
 
-    const result = new Set(); // クエリの重複を防ぐために `Set` を使用
-
-    // サロゲートペア文字（絵文字など）を除外
+    // サロゲートペア文字（絵文字など）や Firestore のフィールドパスとして使用できない文字を除外
     const target = constraints.replace(
-      /[\uD800-\uDBFF]|[\uDC00-\uDFFF]|~|\*|\[|\]|\s+/g,
+      /[\uD800-\uDBFF]|[\uDC00-\uDFFF]|~|\*|\[|\]|\.|\s+/g,
       "",
     );
 
-    // 1 文字・2 文字のトークンを生成
+    // 1文字・2文字トークンを生成し、重複を除外
     const tokens = [
       ...new Set([
-        ...[...target].map((_, i) => target.substring(i, i + 1)), // 1 文字トークン
-        ...[...target].map((_, i) => target.substring(i, i + 2)).slice(0, -1), // 2 文字トークン
+        ...[...target].map((_, i) => target.substring(i, i + 1)),
+        ...[...target].map((_, i) => target.substring(i, i + 2)).slice(0, -1),
       ]),
     ];
 
-    // Firestore クエリオブジェクトを作成
-    tokens.forEach((token) => {
-      result.add(where(`tokenMap.${token}`, "==", true));
-    });
-
-    return Array.from(result); // `Set` を配列に変換して返す
+    // Firestore クエリオブジェクトを生成
+    return tokens.map((token) => where(`tokenMap.${token}`, "==", true));
   }
 
   async fetchDocs({
