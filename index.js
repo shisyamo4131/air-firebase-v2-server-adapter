@@ -4,6 +4,7 @@
  */
 import { logger } from "firebase-functions";
 import { GeoPoint } from "firebase-admin/firestore";
+import { generateNGramTokens } from "@shisyamo4131/air-firebase-v2/utils/tokenMap";
 
 class ServerAdapter {
   static firestore = null;
@@ -378,7 +379,7 @@ class ServerAdapter {
    * - 不明なクエリタイプが指定された場合はエラーをスローします。
    *
    * @param {Array} constraints - クエリ条件の配列です。
-   * @returns {Array<Object>} - Firestore クエリオブジェクトの配列を返します。
+   * @returns {Array<Array>} - Firestore クエリ条件の配列を返します。
    * @throws {Error} - 不明なクエリタイプが指定された場合、エラーをスローします。
    */
   createQueries(constraints) {
@@ -442,29 +443,25 @@ class ServerAdapter {
    * @throws {Error} - `constraints` が空文字の場合、エラーをスローします。
    *
    * [更新履歴]
+   * 2026-07-17 - N-Gram生成処理を air-firebase-v2 の共通ユーティリティーに移行
    * 2026-06-30 - 「.」を検索対象外文字列に追加してリファクタリング
    *****************************************************************************/
   createTokenMapQueries(constraints) {
-    if (!constraints || constraints.trim().length === 0) {
-      throw new ClientAdapterError(ERRORS.VALIDATION_INVALID_CONSTRAINTS);
+    if (
+      typeof constraints !== "string" ||
+      constraints.trim().length === 0
+    ) {
+      throw new Error("constraints must be a non-empty string.");
     }
 
-    // サロゲートペア文字（絵文字など）や Firestore のフィールドパスとして使用できない文字を除外
-    const target = constraints.replace(
-      /[\uD800-\uDBFF]|[\uDC00-\uDFFF]|~|\*|\[|\]|\.|\s+/g,
-      "",
-    );
+    const tokens = generateNGramTokens(constraints);
 
-    // 1文字・2文字トークンを生成し、重複を除外
-    const tokens = [
-      ...new Set([
-        ...[...target].map((_, i) => target.substring(i, i + 1)),
-        ...[...target].map((_, i) => target.substring(i, i + 2)).slice(0, -1),
-      ]),
-    ];
+    if (tokens.length === 0) {
+      throw new Error("constraints contains no searchable characters.");
+    }
 
-    // Firestore クエリオブジェクトを生成
-    return tokens.map((token) => where(`tokenMap.${token}`, "==", true));
+    // Firestore クエリ条件を生成
+    return tokens.map((token) => ["where", `tokenMap.${token}`, "==", true]);
   }
 
   async fetchDocs({
