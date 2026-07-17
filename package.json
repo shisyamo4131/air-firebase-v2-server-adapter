@@ -35,11 +35,11 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "peerDependencies": {
-    "@shisyamo4131/air-firebase-v2": "^2.3.1-dev.5",
+    "@shisyamo4131/air-firebase-v2": "^2.3.1-dev.6",
     "firebase-functions": "^5.0.0 || ^6.0.0 || ^7.0.0"
   },
   "devDependencies": {
-    "@shisyamo4131/air-firebase-v2": "^2.3.1-dev.5",
+    "@shisyamo4131/air-firebase-v2": "^2.3.1-dev.6",
     "firebase-functions": "^7.0.0",
     "jest": "^30.2.0"
   }
